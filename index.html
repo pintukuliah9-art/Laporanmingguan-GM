@@ -1,0 +1,782 @@
+import { useState, useEffect, useRef } from "react";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis,
+} from "recharts";
+import {
+  Megaphone, FileText, Wallet, ExternalLink,
+  CheckCircle2, AlertTriangle, Lightbulb, ArrowRight,
+} from "lucide-react";
+
+/* =========================================================================
+   DESIGN TOKENS
+   ========================================================================= */
+const INK = "#14233B";
+const INK_SOFT = "#57667C";
+const INK_FAINT = "#8593A6";
+const PAPER = "#F2F5F8";
+const SURFACE = "#FFFFFF";
+const LINE = "#E3E8EE";
+
+const GOOD = "#3F8F6B";
+const GOOD_SOFT = "#E7F3ED";
+const WARN = "#C1443A";
+const WARN_SOFT = "#FBEAE8";
+const ACTION = "#5B57A3";
+const ACTION_SOFT = "#ECEBF6";
+
+const DIVISION_ORDER = ["marketing", "administrasi", "keuangan"];
+
+const DIVISION_META = {
+  marketing: { accent: "#DB7F3B", soft: "#FBEBDD", icon: Megaphone, label: "Marketing", verb: "menutup pendaftaran" },
+  administrasi: { accent: "#3C6E91", soft: "#E7EFF4", icon: FileText, label: "Administrasi", verb: "memproses berkas" },
+  keuangan: { accent: "#B8842A", soft: "#F7EEDC", icon: Wallet, label: "Keuangan", verb: "menagih & mencatat dana" },
+};
+
+/* =========================================================================
+   DATA — ditranskripsi dari laporan mingguan tiap divisi (01–03 Juli 2026)
+   ========================================================================= */
+const DATA = {
+  marketing: {
+    periode: "01–03 Juli 2026", minggu: 1,
+    hero: { label: "Total Closing / Pendaftaran", value: 10, unit: "mahasiswa" },
+    navStat: "10 mhs",
+    stats: [
+      { label: "Total Lead Iklan", value: 772, unit: "lead" },
+      { label: "Rata-rata CPL", value: 2256, prefix: "Rp", unit: "" },
+      { label: "Closing Rate", value: 1.3, unit: "%", decimals: 1 },
+      { label: "Belanja Iklan", value: 1741689, prefix: "Rp", unit: "", compact: true },
+    ],
+    program: [
+      { name: "RPL Khusus", value: 9, campus: "STIS Darul Ulum" },
+      { name: "RPL 6 Bulan", value: 1, campus: "STIS Darul Ulum" },
+    ],
+    programNote: "Seluruh 10 mahasiswa (100%) yang closing pada periode ini berasal dari STIS Darul Ulum.",
+    kpiIklan: [
+      ["Total Hasil / Lead", "772 lead"],
+      ["Rata-rata CPL", "Rp 2.256"],
+      ["Total Belanja Iklan", "Rp 1.741.689"],
+      ["Total Impresi", "130.083"],
+      ["Total Jangkauan", "98.015 akun"],
+      ["Total Kontak Pengiriman", "Belum tersedia / tidak terbaca pada data sebelumnya"],
+      ["Estimasi Cost per Closing", "Rp 174.169"],
+      ["Rasio Closing dari Lead", "1,30%"],
+    ],
+    campaigns: [
+      { name: "AKSELERASI_KOORD INDRA", lead: 133, cpl: 1657 },
+      { name: "IKLAN RPL STIA MENSIS", lead: 109, cpl: 1002 },
+      { name: "AKSELERASI _ YUYUN - Salin", lead: 99, cpl: 2296 },
+      { name: "RPL STIS DU_ TITO - Salin", lead: 95, cpl: 2754 },
+      { name: "REGULER STIS DU_ BIMA", lead: 90, cpl: 1879 },
+      { name: "RPL STIT BU- NURUL", lead: 79, cpl: 2675 },
+      { name: "RPL STIS DU - WENDA", lead: 65, cpl: 3005 },
+      { name: "AKSELERASI_FAJAR", lead: 61, cpl: 2916 },
+      { name: "REGULER STIT BU_NISA", lead: 40, cpl: 4239 },
+    ],
+    pic: [
+      { name: "Nur Kholis", team: "Internal", value: 3 },
+      { name: "Bagus Ariex", team: "Koordinator", value: 2 },
+      { name: "Sita Tami", team: "Koordinator", value: 2 },
+      { name: "Wenda Maylani", team: "Internal", value: 1 },
+      { name: "Alfarizi", team: "Koordinator", value: 1 },
+      { name: "Fajar Maulana", team: "Koordinator", value: 1 },
+    ],
+    capaian: [
+      "Total closing bulan Juli 2026 mencapai 10 mahasiswa.",
+      "Program dengan kontribusi terbesar adalah RPL Khusus sebanyak 9 mahasiswa.",
+      "Program RPL 6 Bulan memperoleh 1 mahasiswa.",
+      "Total Program Reguler & RPL mencapai 1 mahasiswa.",
+      "Total Closing RPL Khusus mencapai 9 mahasiswa.",
+      "Perguruan tinggi dengan kontribusi closing terbesar adalah STIS Darul Ulum sebanyak 10 mahasiswa.",
+      "Seluruh closing pada periode ini berasal dari STIS Darul Ulum.",
+      "Total lead iklan mencapai 772 lead.",
+      "Total belanja iklan sebesar Rp1.741.689 dengan rata-rata CPL Rp2.256.",
+      "Kampanye dengan lead tertinggi adalah AKSELERASI_KOORD INDRA sebanyak 133 lead.",
+      "Kampanye dengan CPL terbaik adalah IKLAN RPL STIA MENSIS dengan CPL Rp1.002.",
+      "Kampanye besar dengan performa baik adalah AKSELERASI_KOORD INDRA dengan 133 lead dan CPL Rp1.657.",
+      "PIC internal dengan closing tertinggi adalah Nur Kholis sebanyak 3 mahasiswa.",
+      "Koordinator dengan closing tertinggi adalah Bagus Ariex dan Sita Tami, masing-masing sebanyak 2 mahasiswa.",
+      "Data performa internal dan koordinator sudah sinkron dengan total closing, yaitu 10 mahasiswa.",
+    ],
+    kendala: [
+      "Closing masih sangat didominasi oleh Program RPL Khusus, sedangkan Program RPL 6 Bulan baru menghasilkan 1 mahasiswa.",
+      "Distribusi perguruan tinggi masih belum merata karena seluruh closing berasal dari STIS Darul Ulum.",
+      "Kampanye dengan CPL tertinggi adalah REGULER STIT BU_NISA dengan CPL Rp4.239.",
+      "Kampanye RPL STIS DU - WENDA perlu dievaluasi karena CPL mencapai Rp3.005.",
+      "Kampanye AKSELERASI_FAJAR juga perlu dipantau karena CPL mencapai Rp2.916.",
+      "Kampanye RPL STIS DU_ TITO - Salin perlu diperhatikan karena CPL mencapai Rp2.754.",
+      "Total lead iklan sudah mencapai 772 lead, namun rasio closing dari lead masih sekitar 1,30%.",
+      "Perlu peningkatan kualitas follow-up agar lead yang masuk dapat lebih banyak dikonversi menjadi pendaftaran.",
+      "Perlu pemantauan kualitas audiens, materi iklan, dan efektivitas admin dalam membalas calon mahasiswa.",
+      "Data kontak pengiriman belum tersedia/tidak terbaca pada data sebelumnya sehingga perlu dilengkapi untuk analisis lanjutan.",
+    ],
+    solusi: [
+      "Optimalkan kampanye dengan CPL rendah dan hasil tinggi, terutama IKLAN RPL STIA MENSIS, AKSELERASI_KOORD INDRA, dan REGULER STIS DU_ BIMA.",
+      "Evaluasi kampanye dengan CPL tinggi, terutama REGULER STIT BU_NISA, RPL STIS DU - WENDA, dan AKSELERASI_FAJAR.",
+      "Pertahankan Program RPL Khusus sebagai program utama karena menjadi penyumbang terbesar dengan 9 mahasiswa.",
+      "Perkuat promosi Program RPL 6 Bulan agar kontribusi closing tidak terlalu kecil.",
+      "Dorong variasi perguruan tinggi lain agar closing tidak hanya bergantung pada STIS Darul Ulum.",
+      "Maksimalkan follow-up lead dengan pola bertahap: respons cepat, H+1, H+3, H+7, dan H+14.",
+      "Review materi iklan, copywriting, visual, target audiens, dan penawaran agar kualitas leads meningkat.",
+      "Lakukan evaluasi mingguan berdasarkan jumlah lead, CPL, closing, closing rate, dan kendala masing-masing PIC.",
+      "Perkuat kontrol performa admin/marketing agar setiap lead yang masuk tercatat, difollow-up, dan diproses sampai closing.",
+      "Lengkapi data kontak pengiriman agar laporan iklan bulan berikutnya lebih akurat dan mudah dianalisis.",
+    ],
+    lampiran: "https://docs.google.com/spreadsheets/d/1tObm7QdfinccoHhZMYscyn_zlFW--azPxJ5OuCKweEY/edit?usp=sharing",
+    penutup: { nama: null, divisi: "Divisi Marketing" },
+  },
+
+  administrasi: {
+    periode: "01–03 Juli 2026", minggu: 1,
+    hero: { label: "Data Masuk Minggu Ini", value: 13, unit: "berkas" },
+    navStat: "13 berkas",
+    stats: [
+      { label: "RPL Khusus", value: 10, unit: "berkas" },
+      { label: "RPL", value: 3, unit: "berkas" },
+      { label: "Pengajuan Input Data", value: 9, unit: "mhs" },
+      { label: "Pengajuan Revisi", value: 1, unit: "mhs" },
+    ],
+    program: [
+      { name: "RPL Khusus", value: 10, campus: "STISDU" },
+      { name: "RPL", value: 3, campus: "STIS DU" },
+    ],
+    breakdown: [
+      { kategori: "RPL Khusus", total: 10, rows: [["Validasi Data (STISDU)", 3], ["Proses PDDikti (STISDU)", 7]] },
+      { kategori: "RPL", total: 3, rows: [["STIS DU – RPL 6 Bulan", 3]] },
+    ],
+    pendukung: [
+      ["Pengajuan Input Data", "STIS DU", 9],
+      ["Pengajuan Revisi", "STIS DU", 1],
+    ],
+    capaian: [
+      "Selesai cek maintenance STISDU 100 data ke-1 — 97 data pulih, 3 data revisi.",
+      "PDF PGMI STITBU sudah dikirim oleh tim kampus.",
+      "Pengajuan input 9 mahasiswa STISDU.",
+      "Selesai 7 surat keluar.",
+      "Cetak 11 ijazah STISDU.",
+    ],
+    kendala: [
+      "Data revisi STISDU 100 ke-1 masih menyisakan 3 data yang perlu direvisi.",
+      "Data hilang RPL STISDU tidak dapat disinkronkan karena feeder belum diperbarui.",
+      "Data hilang RPL Khusus UNISBA belum pulih, dan mahasiswa bersangkutan tidak bersedia pindah kampus maupun program studi.",
+      "Data STAISU, INKHAS, UNU, UNKRIS, dan Annur yang sudah diajukan input belum tayang di PDDikti.",
+    ],
+    solusi: [
+      "Menindaklanjuti proses revisi pada 3 data yang tersisa agar seluruh 100 data maintenance STISDU pulih sepenuhnya.",
+      "Berkoordinasi dengan tim feeder/PDDikti pusat untuk mempercepat sinkronisasi data RPL STISDU yang hilang.",
+      "Menyiapkan alternatif pemulihan data RPL Khusus UNISBA tanpa perpindahan kampus/prodi, serta mengeskalasi ke pihak UNISBA bila diperlukan.",
+      "Melakukan follow-up berkala ke PDDikti pusat agar data STAISU, INKHAS, UNU, UNKRIS, dan Annur segera tayang.",
+    ],
+    solusiNote: "Disusun berpasangan dan berurutan dengan poin Kendala di atas — bagian ini baru wajib mulai periode ini dan disusun oleh tim penyusun laporan.",
+    lampiran: "https://docs.google.com/spreadsheets/d/1SnkYHQugZc3hVlRpfGMecHPtbr5DAs5q4Ww3Pb_93Lo/edit?gid=1515675945#gid=1515675945",
+    penutup: { nama: "Ismawati", divisi: "Divisi Administrasi" },
+  },
+
+  keuangan: {
+    periode: "01–03 Juli 2026", minggu: 1,
+    hero: { label: "Total Dana Masuk", value: 113350000, unit: "", prefix: "Rp", compact: true },
+    navStat: "Rp113,35 Jt",
+    stats: [
+      { label: "Dana Keluar Non-Operasional", value: 10000000, prefix: "Rp", compact: true },
+      { label: "Penagihan RPL Khusus (Juni)", value: 72, unit: "%" },
+      { label: "Penagihan Total Tagihan 2026", value: 95, unit: "%" },
+      { label: "Piutang Kumulatif Jan–Jul", value: 384500000, prefix: "Rp", compact: true },
+    ],
+    program: [
+      { name: "RPL Khusus", value: 85750000 },
+      { name: "RPL", value: 27350000 },
+      { name: "K. Karyawan", value: 0 },
+    ],
+    danaMasuk: [
+      { kategori: "RPL Khusus", total: 85750000, rows: [["Pendaftaran", 30500000], ["Tagihan", 55250000]] },
+      { kategori: "RPL", total: 27350000, rows: [["RPL STITBU", 1500000], ["RPL STISDU", 25850000]] },
+      { kategori: "K. Karyawan", total: 0, rows: [["K. Karyawan STITBU", 0], ["K. Karyawan STISDU", 0]] },
+    ],
+    danaKeluar: [
+      ["RPL Khusus", 10000000], ["STITBU", 0], ["STISDU", 0],
+    ],
+    piutang: [
+      ["Berkas tunggu lulus & pengajuan PDF pusat Annur", 290000000],
+      ["Berkas revisi sistem", 53500000],
+      ["Berkas direksi, Lawfirm, dan internal STISDU", 41000000],
+    ],
+    piutangNote: "Piutang bulan Juli 2026: 1 berkas revisi sistem & tagihan tunggu cetak.",
+    capaian: [
+      "Persentase penagihan hasil RPL Khusus tagihan Juni mencapai 72%, dengan status tagihan lancar dan revisi sistem berkas berjalan sejak 01 Juli 2026.",
+      "Persentase hasil penagihan total tagihan 2026 mencapai 95%.",
+      "Menyelesaikan setor pusat STISDU.",
+      "Memvalidasi data siap dana STISDU untuk 9 mahasiswa.",
+      "Memproses penggabungan database keuangan RPL Khusus 2026 (terupdate).",
+      "Memproses penggabungan database RPL dan K. Karyawan STITBU (terupdate).",
+    ],
+    kendala: [
+      "Piutang bulan Juli 2026 terdiri dari 1 berkas revisi sistem dan tagihan yang masih menunggu cetak.",
+      "Piutang Januari–Juli 2026 sebesar Rp 290.000.000 merupakan berkas yang menunggu kelulusan dan pengajuan PDF pusat Annur.",
+      "Piutang sebesar Rp 53.500.000 merupakan berkas yang masih dalam proses revisi sistem.",
+      "Piutang sebesar Rp 41.000.000 merupakan berkas direksi, Lawfirm, dan internal STISDU.",
+      "Data dengan validasi siap dana STAISU, UNU, Annur, dan UNKRIS belum tayang di PDDikti.",
+      "PDF mahasiswa Annur dan 3 mahasiswa STITBU belum dikirimkan oleh tim pusat dan kampus.",
+    ],
+    solusi: [
+      "Melakukan penagihan berkala, pengajuan PDF, dan pencetakan berkas kepada tim kampus.",
+      "Mengajukan PDF berkas revisi dan follow-up PDF STITBU kepada tim kampus.",
+      "Melakukan follow-up berkala kepada tim pusat mengenai berkas siap dana yang belum tayang di PDDikti.",
+      "Melakukan follow-up berkala kepada tim pusat untuk pengajuan PDF mahasiswa Annur.",
+    ],
+    lampiran: "https://docs.google.com/spreadsheets/d/1LfKtQb1PIy-TGNkWi826_GF474WNS1OC7_Va3p634L4/edit?gid=1924891740#gid=1924891740",
+    penutup: { nama: "Ismawati", divisi: "Divisi Keuangan" },
+  },
+};
+
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+const idFmt = (n) => Math.round(n).toLocaleString("id-ID");
+
+function formatValue(stat) {
+  const { value, unit, prefix, decimals, compact } = stat;
+  if (compact && value >= 1000000) {
+    const jt = value / 1000000;
+    return `${prefix || ""}${jt.toLocaleString("id-ID", { maximumFractionDigits: 2 })} Jt`;
+  }
+  const num = decimals ? value.toLocaleString("id-ID", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : idFmt(value);
+  return `${prefix || ""}${num}${unit ? (prefix ? " " + unit : " " + unit) : ""}`.trim();
+}
+
+function useCountUp(target, active, duration = 850) {
+  const [val, setVal] = useState(0);
+  const rafRef = useRef(null);
+  useEffect(() => {
+    const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!active) return;
+    if (reduce) { setVal(target); return; }
+    let start = null;
+    setVal(0);
+    function step(ts) {
+      if (start === null) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(target * eased);
+      if (p < 1) rafRef.current = requestAnimationFrame(step);
+    }
+    rafRef.current = requestAnimationFrame(step);
+    return () => rafRef.current && cancelAnimationFrame(rafRef.current);
+  }, [target, active, duration]);
+  return val;
+}
+
+function cplTier(cpl) {
+  if (cpl < 1800) return { color: "#3F8F6B", label: "Efisien" };
+  if (cpl < 2800) return { color: "#D9A441", label: "Sedang" };
+  return { color: "#C1443A", label: "Tinggi" };
+}
+
+const nbsp = (s) => String(s).replace(/ /g, "\u00A0");
+
+/* =========================================================================
+   SMALL PRESENTATIONAL PIECES
+   ========================================================================= */
+function SectionLabel({ children, accent }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="h-4 w-1 rounded-full" style={{ backgroundColor: accent }} />
+      <h3 className="font-display text-xs tracking-widest uppercase" style={{ color: INK_SOFT, letterSpacing: "0.12em" }}>
+        {children}
+      </h3>
+    </div>
+  );
+}
+
+function Card({ children, className = "", style = {} }) {
+  return (
+    <div
+      className={`rounded-2xl ${className}`}
+      style={{ background: SURFACE, border: `1px solid ${LINE}`, boxShadow: "0 1px 2px rgba(20,35,59,0.04)", ...style }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StatTile({ stat, accent }) {
+  const numeric = typeof stat.value === "number";
+  const animated = numeric ? useCountUp(stat.value, true) : 0;
+  const display = numeric ? formatValue({ ...stat, value: animated }) : stat.value;
+  return (
+    <Card className="p-4 sm:p-5 flex-1 min-w-[150px]">
+      <p className="font-body text-xs uppercase tracking-wide mb-2" style={{ color: INK_FAINT, letterSpacing: "0.06em" }}>
+        {stat.label}
+      </p>
+      <p className="font-display font-semibold text-2xl sm:text-[1.65rem] leading-none" style={{ color: accent }}>
+        {display}
+      </p>
+    </Card>
+  );
+}
+
+function StageChip({ id, active, onSelect }) {
+  const meta = DIVISION_META[id];
+  const Icon = meta.icon;
+  const data = DATA[id];
+  return (
+    <button
+      onClick={() => onSelect(id)}
+      className="group relative flex-1 flex items-center gap-3 rounded-2xl px-4 py-3 sm:py-3.5 text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style={{
+        background: active ? meta.accent : SURFACE,
+        border: `1px solid ${active ? meta.accent : LINE}`,
+        boxShadow: active ? `0 6px 16px -6px ${meta.accent}99` : "0 1px 2px rgba(20,35,59,0.04)",
+        transform: active ? "translateY(-1px)" : "none",
+      }}
+    >
+      <span
+        className="flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl shrink-0 transition-colors"
+        style={{ background: active ? "rgba(255,255,255,0.22)" : meta.soft, color: active ? "#fff" : meta.accent }}
+      >
+        <Icon size={18} strokeWidth={2.1} />
+      </span>
+      <span className="min-w-0">
+        <span
+          className="block font-display font-semibold text-sm sm:text-[0.95rem] truncate"
+          style={{ color: active ? "#fff" : INK }}
+        >
+          {meta.label}
+        </span>
+        <span className="block font-data text-[0.72rem] sm:text-xs mt-0.5" style={{ color: active ? "rgba(255,255,255,0.85)" : INK_FAINT }}>
+          {data.navStat}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function Donut({ data, accentMap, centerLabel, centerValue }) {
+  return (
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={220}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius="64%"
+            outerRadius="92%"
+            paddingAngle={data.length > 1 ? 3 : 0}
+            startAngle={90}
+            endAngle={-270}
+            stroke="none"
+          >
+            {data.map((d, i) => (
+              <Cell key={i} fill={accentMap ? accentMap[i] : d.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(v, n) => [idFmt(v), n]}
+            contentStyle={{ borderRadius: 12, border: `1px solid ${LINE}`, fontSize: 12, fontFamily: "Inter, sans-serif" }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 8 }}>
+        <span className="font-display font-bold text-2xl" style={{ color: INK }}>{centerValue}</span>
+        <span className="font-body text-[0.68rem] mt-0.5" style={{ color: INK_FAINT }}>{centerLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function LegendRow({ items }) {
+  return (
+    <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: it.color }} />
+          <span className="font-body text-xs" style={{ color: INK_SOFT }}>{it.name}</span>
+          <span className="font-data text-xs font-medium" style={{ color: INK }}>{it.display}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InsightList({ title, icon: Icon, color, soft, items, note }) {
+  return (
+    <Card className="p-5 h-full flex flex-col">
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className="flex items-center justify-center h-8 w-8 rounded-lg shrink-0" style={{ background: soft, color }}>
+          <Icon size={16} strokeWidth={2.2} />
+        </span>
+        <h4 className="font-display font-semibold text-sm tracking-wide" style={{ color: INK }}>{title}</h4>
+        <span className="ml-auto font-data text-xs rounded-full px-2 py-0.5" style={{ background: soft, color }}>{items.length}</span>
+      </div>
+      {note && <p className="font-body text-xs italic mb-3" style={{ color: INK_FAINT }}>{note}</p>}
+      <ul className="space-y-2.5 overflow-y-auto pr-1" style={{ maxHeight: 380 }}>
+        {items.map((t, i) => (
+          <li key={i} className="flex gap-2.5 font-body text-[0.83rem] leading-snug" style={{ color: INK_SOFT }}>
+            <span className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
+            <span>{t}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/* ---- generic breakdown table (Kategori -> Sub-kategori -> Jumlah) ---- */
+function BreakdownTable({ rows, unit, accent }) {
+  return (
+    <div className="overflow-x-auto rounded-xl" style={{ border: `1px solid ${LINE}` }}>
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr style={{ background: INK }}>
+            <th className="text-left font-display font-medium text-xs uppercase tracking-wide py-2.5 px-4" style={{ color: "#fff" }}>Kategori</th>
+            <th className="text-left font-display font-medium text-xs uppercase tracking-wide py-2.5 px-4" style={{ color: "#fff" }}>Sub-Kategori</th>
+            <th className="text-right font-display font-medium text-xs uppercase tracking-wide py-2.5 px-4" style={{ color: "#fff" }}>Jumlah{unit ? ` (${unit})` : ""}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((group, gi) => (
+            group.rows.map((r, ri) => (
+              <tr key={`${gi}-${ri}`} style={{ borderTop: `1px solid ${LINE}` }}>
+                {ri === 0 && (
+                  <td rowSpan={group.rows.length} className="align-top py-2.5 px-4 font-body" style={{ color: INK, background: PAPER }}>
+                    <span className="font-semibold">{group.kategori}</span>
+                    <span className="block font-data text-xs mt-0.5" style={{ color: INK_FAINT }}>Total: {typeof group.total === "number" && group.total > 1000 ? `Rp ${idFmt(group.total)}` : idFmt(group.total)}</span>
+                  </td>
+                )}
+                <td className="py-2.5 px-4 font-body" style={{ color: INK_SOFT }}>{r[0]}</td>
+                <td className="py-2.5 px-4 font-data text-right" style={{ color: INK }}>{typeof r[1] === "number" && group.total > 1000 ? `Rp ${idFmt(r[1])}` : idFmt(r[1])}</td>
+              </tr>
+            ))
+          ))}
+          <tr style={{ borderTop: `2px solid ${LINE}`, background: PAPER }}>
+            <td colSpan={2} className="py-3 px-4 font-display font-semibold text-sm" style={{ color: INK }}>TOTAL</td>
+            <td className="py-3 px-4 font-data font-semibold text-right" style={{ color: accent }}>
+              {(() => {
+                const sum = rows.reduce((a, g) => a + g.total, 0);
+                return sum > 1000 ? `Rp ${idFmt(sum)}` : idFmt(sum);
+              })()}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SimpleTable({ head, rows, accentLast }) {
+  return (
+    <div className="overflow-x-auto rounded-xl" style={{ border: `1px solid ${LINE}` }}>
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr style={{ background: INK }}>
+            {head.map((h, i) => (
+              <th key={i} className={`font-display font-medium text-xs uppercase tracking-wide py-2.5 px-4 ${i === head.length - 1 ? "text-right" : "text-left"}`} style={{ color: "#fff" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} style={{ borderTop: `1px solid ${LINE}`, background: i % 2 ? PAPER : SURFACE }}>
+              {r.map((c, j) => (
+                <td
+                  key={j}
+                  className={`py-2.5 px-4 ${j === r.length - 1 ? "text-right font-data" : "font-body"} ${accentLast && j === r.length - 1 ? "font-semibold" : ""}`}
+                  style={{ color: j === r.length - 1 && accentLast ? accentLast : (j === 0 ? INK : INK_SOFT) }}
+                >
+                  {typeof c === "number" ? (c > 1000 || (r[0] && String(r[0]).length) ? idFmt(c) : c) : c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* =========================================================================
+   MAIN APP
+   ========================================================================= */
+export default function OpsDashboard() {
+  const [active, setActive] = useState("marketing");
+  const div = DATA[active];
+  const meta = DIVISION_META[active];
+
+  return (
+    <div className="min-h-screen w-full font-body" style={{ background: PAPER }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        .font-display { font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; }
+        .font-body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+        .font-data { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+        @media (prefers-reduced-motion: reduce) {
+          * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #C9D2DC; border-radius: 999px; }
+      `}</style>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        {/* header */}
+        <div className="flex items-start justify-between mb-6 sm:mb-8 gap-4">
+          <div>
+            <p className="font-data text-[0.7rem] uppercase tracking-[0.18em] mb-1.5" style={{ color: INK_FAINT }}>Laporan Operasional Mingguan</p>
+            <h1 className="font-display font-bold text-xl sm:text-2xl" style={{ color: INK }}>Ringkasan 3 Divisi</h1>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="font-data text-xs sm:text-sm font-semibold rounded-lg px-2.5 py-1" style={{ color: INK, background: SURFACE, border: `1px solid ${LINE}` }}>Minggu 1</p>
+            <p className="font-body text-[0.7rem] mt-1" style={{ color: INK_FAINT }}>01–03 Juli 2026</p>
+          </div>
+        </div>
+
+        {/* pipeline stage selector */}
+        <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-2">
+          {DIVISION_ORDER.map((id, i) => (
+            <div key={id} className="flex items-center gap-2 flex-1">
+              <StageChip id={id} active={active === id} onSelect={setActive} />
+              {i < DIVISION_ORDER.length - 1 && (
+                <ArrowRight size={16} className="hidden sm:block shrink-0" style={{ color: INK_FAINT }} />
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="font-body text-[0.72rem] mb-8 sm:mb-10" style={{ color: INK_FAINT }}>
+          Alur operasional: Marketing {meta ? "" : ""}menutup pendaftaran → Administrasi memproses berkas → Keuangan menagih & mencatat dana.
+        </p>
+
+        {/* hero */}
+        <HeroBlock division={active} />
+
+        {/* stats row */}
+        <div className="flex flex-wrap gap-3 mt-4 mb-10">
+          {div.stats.map((s, i) => <StatTile key={i} stat={s} accent={meta.accent} />)}
+        </div>
+
+        {/* ringkasan data utama */}
+        <SectionLabel accent={meta.accent}>Ringkasan Data Utama</SectionLabel>
+        <RingkasanBlock division={active} />
+
+        {/* data pendukung */}
+        <div className="mt-10">
+          <SectionLabel accent={meta.accent}>Data / Kinerja Pendukung</SectionLabel>
+          <PendukungBlock division={active} />
+        </div>
+
+        {/* capaian / kendala / solusi */}
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <InsightList title="Capaian" icon={CheckCircle2} color={GOOD} soft={GOOD_SOFT} items={div.capaian} />
+          <InsightList title="Kendala" icon={AlertTriangle} color={WARN} soft={WARN_SOFT} items={div.kendala} />
+          <InsightList title="Solusi / Rekomendasi" icon={Lightbulb} color={ACTION} soft={ACTION_SOFT} items={div.solusi} note={div.solusiNote} />
+        </div>
+
+        {/* lampiran & penutup */}
+        <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
+          <a
+            href={div.lampiran} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-2 font-body text-sm font-medium rounded-xl px-4 py-2.5 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 w-fit"
+            style={{ background: meta.soft, color: meta.accent }}
+          >
+            <ExternalLink size={15} /> Buka Lampiran Data
+          </a>
+          <div className="text-right">
+            <p className="font-body text-xs" style={{ color: INK_FAINT }}>Hormat saya,</p>
+            <p className="font-display font-semibold text-sm" style={{ color: INK }}>{div.penutup.nama || div.penutup.divisi}</p>
+            {div.penutup.nama && <p className="font-body text-xs" style={{ color: INK_FAINT }}>{div.penutup.divisi}</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   HERO
+   ========================================================================= */
+function HeroBlock({ division }) {
+  const div = DATA[division];
+  const meta = DIVISION_META[division];
+  const numeric = typeof div.hero.value === "number";
+  const animated = numeric ? useCountUp(div.hero.value, true, 1100) : 0;
+  const display = numeric ? formatValue({ ...div.hero, value: animated }) : div.hero.value;
+  return (
+    <Card className="p-6 sm:p-8 relative overflow-hidden" style={{ borderColor: meta.accent + "33" }}>
+      <div className="absolute right-0 top-0 h-full w-1.5" style={{ background: meta.accent }} />
+      <p className="font-body text-xs sm:text-sm uppercase tracking-wide mb-2" style={{ color: INK_FAINT, letterSpacing: "0.08em" }}>{div.hero.label}</p>
+      <p className="font-display font-bold text-4xl sm:text-5xl leading-none" style={{ color: meta.accent }}>{display}</p>
+      {div.hero.unit && <p className="font-body text-sm mt-2" style={{ color: INK_SOFT }}>{div.hero.unit}</p>}
+    </Card>
+  );
+}
+
+/* =========================================================================
+   RINGKASAN DATA UTAMA (per divisi)
+   ========================================================================= */
+function RingkasanBlock({ division }) {
+  const div = DATA[division];
+  const meta = DIVISION_META[division];
+
+  if (division === "marketing") {
+    const total = div.program.reduce((a, p) => a + p.value, 0);
+    const colors = [meta.accent, "#EFC08A"];
+    return (
+      <Card className="p-5 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
+          <div className="md:col-span-2">
+            <Donut data={div.program} accentMap={colors} centerLabel="Total Mahasiswa" centerValue={total} />
+            <LegendRow items={div.program.map((p, i) => ({ name: p.name, color: colors[i], display: `${p.value} (${Math.round((p.value / total) * 100)}%)` }))} />
+          </div>
+          <div className="md:col-span-3">
+            <SimpleTable head={["Kategori (Program)", "Sub-Kategori (Kampus)", "Jumlah"]} rows={div.program.map(p => [p.name, p.campus, p.value])} accentLast={meta.accent} />
+            <p className="font-body text-xs mt-3 leading-relaxed" style={{ color: INK_FAINT }}>{div.programNote}</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (division === "administrasi") {
+    const colors = [meta.accent, "#8FB7CE"];
+    const total = div.program.reduce((a, p) => a + p.value, 0);
+    return (
+      <Card className="p-5 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-start">
+          <div className="md:col-span-2">
+            <Donut data={div.program} accentMap={colors} centerLabel="Total Berkas" centerValue={total} />
+            <LegendRow items={div.program.map((p, i) => ({ name: p.name, color: colors[i], display: `${p.value} (${Math.round((p.value / total) * 100)}%)` }))} />
+          </div>
+          <div className="md:col-span-3">
+            <BreakdownTable rows={div.breakdown} unit="Berkas" accent={meta.accent} />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // keuangan
+  const nonZero = div.program.filter(p => p.value > 0);
+  const colors = [meta.accent, "#E3C275"];
+  const totalMasuk = div.danaMasuk.reduce((a, g) => a + g.total, 0);
+  const totalKeluar = div.danaKeluar.reduce((a, r) => a + r[1], 0);
+  return (
+    <div className="space-y-5">
+      <Card className="p-5 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-start">
+          <div className="md:col-span-2">
+            <Donut data={nonZero} accentMap={colors} centerLabel="Dana Masuk" centerValue={`Rp${(totalMasuk/1000000).toLocaleString("id-ID",{maximumFractionDigits:2})} Jt`} />
+            <LegendRow items={div.program.map((p, i) => ({ name: p.name, color: colors[i] || "#C9D2DC", display: p.value === 0 ? "Rp 0 (0%)" : `Rp ${idFmt(p.value)} (${Math.round((p.value / totalMasuk) * 100)}%)` }))} />
+          </div>
+          <div className="md:col-span-3">
+            <BreakdownTable rows={div.danaMasuk} unit="Rp" accent={meta.accent} />
+            {totalMasuk !== div.hero.value && (
+              <p className="font-body text-xs mt-3 leading-relaxed rounded-lg px-3 py-2" style={{ color: "#8A6212", background: "#FBF3E1" }}>
+                Catatan: jumlah tiga kategori di atas adalah Rp {idFmt(totalMasuk)}, sedangkan angka "Total Dana Masuk" pada laporan asli tertulis Rp {idFmt(div.hero.value)} — selisih Rp {idFmt(div.hero.value - totalMasuk)}. Ditampilkan apa adanya sesuai data sumber; disarankan dicek ke tim Keuangan.
+              </p>
+            )}
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <p className="font-display font-semibold text-sm" style={{ color: INK }}>Dana Keluar Non-Operasional</p>
+          <p className="font-data font-semibold text-sm" style={{ color: WARN }}>Rp {idFmt(totalKeluar)}</p>
+        </div>
+        <SimpleTable head={["Kategori", "Jumlah (Rp)"]} rows={div.danaKeluar.map(([k, v]) => [k, v])} accentLast={WARN} />
+      </Card>
+      <Card className="p-5 sm:p-6">
+        <p className="font-display font-semibold text-sm mb-4" style={{ color: INK }}>Dana Masuk vs. Dana Keluar Non-Operasional</p>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={[{ name: "Dana Masuk", value: div.hero.value, fill: meta.accent }, { name: "Dana Keluar", value: totalKeluar, fill: WARN }]} margin={{ top: 20, right: 12, left: 12, bottom: 4 }}>
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: INK_SOFT, fontFamily: "Inter" }} axisLine={false} tickLine={false} />
+            <Tooltip formatter={(v) => [`Rp ${idFmt(v)}`, ""]} contentStyle={{ borderRadius: 12, border: `1px solid ${LINE}`, fontSize: 12, fontFamily: "Inter" }} />
+            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={64}>
+              {[meta.accent, WARN].map((c, i) => <Cell key={i} fill={c} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+    </div>
+  );
+}
+
+/* =========================================================================
+   DATA / KINERJA PENDUKUNG (per divisi)
+   ========================================================================= */
+function PendukungBlock({ division }) {
+  const div = DATA[division];
+  const meta = DIVISION_META[division];
+
+  if (division === "marketing") {
+    return (
+      <div className="space-y-6">
+        <Card className="p-5 sm:p-6">
+          <p className="font-display font-semibold text-sm mb-4" style={{ color: INK }}>Kinerja Iklan</p>
+          <SimpleTable head={["Metrik", "Nilai"]} rows={div.kpiIklan} />
+        </Card>
+
+        <Card className="p-5 sm:p-6">
+          <p className="font-display font-semibold text-sm mb-1" style={{ color: INK }}>Daftar Kampanye Aktif</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-4">
+            {[{ l: "CPL < Rp1.800", c: "#3F8F6B" }, { l: "Rp1.800–2.800", c: "#D9A441" }, { l: "> Rp2.800", c: "#C1443A" }].map((x, i) => (
+              <span key={i} className="flex items-center gap-1.5 font-body text-[0.7rem]" style={{ color: INK_FAINT }}>
+                <span className="h-2 w-2 rounded-full" style={{ background: x.c }} />{x.l}
+              </span>
+            ))}
+          </div>
+          <ResponsiveContainer width="100%" height={340}>
+            <BarChart data={[...div.campaigns].sort((a, b) => b.lead - a.lead).map(c => ({ ...c, name: nbsp(c.name) }))} layout="vertical" margin={{ left: 8, right: 28, top: 4, bottom: 4 }}>
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="name" width={208} tick={{ fontSize: 10.5, fill: INK_SOFT, fontFamily: "Inter" }} axisLine={false} tickLine={false} interval={0} />
+              <Tooltip
+                cursor={{ fill: PAPER }}
+                formatter={(v, n, p) => [`${v} lead · CPL Rp${idFmt(p.payload.cpl)}`, ""]}
+                contentStyle={{ borderRadius: 12, border: `1px solid ${LINE}`, fontSize: 12, fontFamily: "Inter" }}
+              />
+              <Bar dataKey="lead" radius={[0, 6, 6, 0]} barSize={16}>
+                {[...div.campaigns].sort((a, b) => b.lead - a.lead).map((c, i) => (
+                  <Cell key={i} fill={cplTier(c.cpl).color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-5 sm:p-6">
+          <p className="font-display font-semibold text-sm mb-4" style={{ color: INK }}>Performa Internal & Koordinator</p>
+          <div className="flex items-center gap-4 mb-3">
+            <span className="flex items-center gap-1.5 font-body text-[0.72rem]" style={{ color: INK_FAINT }}><span className="h-2 w-2 rounded-full" style={{ background: meta.accent }} />Internal</span>
+            <span className="flex items-center gap-1.5 font-body text-[0.72rem]" style={{ color: INK_FAINT }}><span className="h-2 w-2 rounded-full" style={{ background: "#EFC08A" }} />Koordinator</span>
+          </div>
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={[...div.pic].sort((a, b) => b.value - a.value).map(p => ({ ...p, name: nbsp(p.name) }))} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11, fill: INK_SOFT, fontFamily: "Inter" }} axisLine={false} tickLine={false} interval={0} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: `1px solid ${LINE}`, fontSize: 12, fontFamily: "Inter" }} formatter={(v) => [`${v} mahasiswa`, ""]} />
+              <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={16}>
+                {[...div.pic].sort((a, b) => b.value - a.value).map((p, i) => (
+                  <Cell key={i} fill={p.team === "Internal" ? meta.accent : "#EFC08A"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+    );
+  }
+
+  if (division === "administrasi") {
+    return (
+      <Card className="p-5 sm:p-6">
+        <p className="font-display font-semibold text-sm mb-4" style={{ color: INK }}>Pengajuan Input Data & Revisi (STIS DU)</p>
+        <SimpleTable head={["Kegiatan", "Kampus", "Jumlah"]} rows={div.pendukung} accentLast={meta.accent} />
+      </Card>
+    );
+  }
+
+  // keuangan — rincian piutang
+  return (
+    <Card className="p-5 sm:p-6">
+      <p className="font-display font-semibold text-sm mb-1" style={{ color: INK }}>Rincian Piutang</p>
+      <p className="font-body text-xs italic mb-4" style={{ color: INK_FAINT }}>{div.piutangNote}</p>
+      <SimpleTable head={["Kategori Piutang (Kumulatif Jan–Jul 2026)", "Jumlah (Rp)"]} rows={div.piutang.map(([k, v]) => [k, v])} accentLast={meta.accent} />
+    </Card>
+  );
+}
